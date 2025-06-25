@@ -14,6 +14,9 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import CreateRide from "./pages/CreateRide";
 import MyRides from "./pages/MyRides";
+import SearchRides from "./pages/SearchRides";
+import RideDetails from "./pages/RideDetails";
+import MyBookings from "./pages/MyBookings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +51,21 @@ const App = () => (
               <Route path="/my-rides" element={
                 <ProtectedRoute requiredRole="driver">
                   <MyRides />
+                </ProtectedRoute>
+              } />
+              <Route path="/search-rides" element={
+                <ProtectedRoute requiredRole="passenger">
+                  <SearchRides />
+                </ProtectedRoute>
+              } />
+              <Route path="/ride/:rideId" element={
+                <ProtectedRoute requiredRole="passenger">
+                  <RideDetails />
+                </ProtectedRoute>
+              } />
+              <Route path="/my-bookings" element={
+                <ProtectedRoute requiredRole="passenger">
+                  <MyBookings />
                 </ProtectedRoute>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

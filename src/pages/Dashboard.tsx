@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Navigation, Car, Users, LogOut, User, Plus, List } from 'lucide-react';
+import { Navigation, Car, Users, LogOut, User, Plus, List, Search, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -105,7 +105,7 @@ const Dashboard = () => {
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                   <CardHeader>
                     <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center mb-4">
-                      <Users className="h-6 w-6 text-white" />
+                      <Search className="h-6 w-6 text-white" />
                     </div>
                     <CardTitle>Find a Ride</CardTitle>
                     <CardDescription>
@@ -113,16 +113,18 @@ const Dashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800">
-                      Search Rides
-                    </Button>
+                    <Link to="/search-rides">
+                      <Button className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800">
+                        Search Rides
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
 
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                   <CardHeader>
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center mb-4">
-                      <Navigation className="h-6 w-6 text-white" />
+                      <MapPin className="h-6 w-6 text-white" />
                     </div>
                     <CardTitle>My Bookings</CardTitle>
                     <CardDescription>
@@ -130,9 +132,11 @@ const Dashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button variant="outline" className="w-full border-blue-200 text-blue-600 hover:bg-blue-50">
-                      View Bookings
-                    </Button>
+                    <Link to="/my-bookings">
+                      <Button variant="outline" className="w-full border-blue-200 text-blue-600 hover:bg-blue-50">
+                        View Bookings
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
               </>

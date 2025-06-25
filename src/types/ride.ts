@@ -7,6 +7,22 @@ export interface Location {
   country: string;
 }
 
+export interface Booking {
+  id: string;
+  rideId: string;
+  passengerId: string;
+  passenger: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  };
+  seatsBooked: number;
+  totalPrice: number;
+  status: 'confirmed' | 'cancelled';
+  createdAt: Date;
+}
+
 export interface Ride {
   id: string;
   driverId: string;
@@ -26,7 +42,7 @@ export interface Ride {
   totalPrice: number;
   description?: string;
   status: 'active' | 'full' | 'completed' | 'cancelled';
-  bookings: string[]; // Array of passenger IDs
+  bookings: Booking[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,4 +55,13 @@ export interface CreateRideData {
   availableSeats: number;
   pricePerSeat: number;
   description?: string;
+}
+
+export interface SearchFilters {
+  from: string;
+  to: string;
+  date?: Date;
+  minPrice?: number;
+  maxPrice?: number;
+  availableSeats?: number;
 }
