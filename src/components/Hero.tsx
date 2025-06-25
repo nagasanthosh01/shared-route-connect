@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Car, Users } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
@@ -19,21 +20,25 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button 
-              size="lg" 
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Car className="mr-2 h-5 w-5" />
-              Offer a Ride
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Users className="mr-2 h-5 w-5" />
-              Find a Ride
-            </Button>
+            <Link to="/register">
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Car className="mr-2 h-5 w-5" />
+                Offer a Ride
+              </Button>
+            </Link>
+            <Link to="/register">
+              <Button 
+                size="lg" 
+                variant="outline"
+                className="border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white text-lg px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <Users className="mr-2 h-5 w-5" />
+                Find a Ride
+              </Button>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
