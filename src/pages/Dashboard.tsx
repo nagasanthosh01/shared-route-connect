@@ -3,7 +3,7 @@ import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Navigation, Car, Users, LogOut, User } from 'lucide-react';
+import { Navigation, Car, Users, LogOut, User, Plus, List } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
@@ -65,7 +65,7 @@ const Dashboard = () => {
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                   <CardHeader>
                     <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center mb-4">
-                      <Car className="h-6 w-6 text-white" />
+                      <Plus className="h-6 w-6 text-white" />
                     </div>
                     <CardTitle>Create New Ride</CardTitle>
                     <CardDescription>
@@ -73,16 +73,18 @@ const Dashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-                      Create Ride
-                    </Button>
+                    <Link to="/create-ride">
+                      <Button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                        Create Ride
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
 
                 <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                   <CardHeader>
                     <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-green-700 rounded-xl flex items-center justify-center mb-4">
-                      <Navigation className="h-6 w-6 text-white" />
+                      <List className="h-6 w-6 text-white" />
                     </div>
                     <CardTitle>My Rides</CardTitle>
                     <CardDescription>
@@ -90,9 +92,11 @@ const Dashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button variant="outline" className="w-full border-green-200 text-green-600 hover:bg-green-50">
-                      View Rides
-                    </Button>
+                    <Link to="/my-rides">
+                      <Button variant="outline" className="w-full border-green-200 text-green-600 hover:bg-green-50">
+                        View Rides
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
               </>
