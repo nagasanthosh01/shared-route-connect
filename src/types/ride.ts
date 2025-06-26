@@ -7,6 +7,13 @@ export interface Location {
   country: string;
 }
 
+export interface LiveLocation {
+  latitude: number;
+  longitude: number;
+  timestamp: Date;
+  accuracy?: number;
+}
+
 export interface Message {
   id: string;
   rideId: string;
@@ -53,9 +60,11 @@ export interface Ride {
   pricePerSeat: number;
   totalPrice: number;
   description?: string;
-  status: 'active' | 'full' | 'completed' | 'cancelled';
+  status: 'active' | 'full' | 'completed' | 'cancelled' | 'in-progress';
   bookings: Booking[];
   messages: Message[];
+  liveLocation?: LiveLocation;
+  isLocationSharingEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

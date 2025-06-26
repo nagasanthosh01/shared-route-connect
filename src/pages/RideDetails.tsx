@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import RideMessaging from '@/components/ride/RideMessaging';
 import ContactInfo from '@/components/ride/ContactInfo';
+import LiveLocationTracker from '@/components/ride/LiveLocationTracker';
 
 const RideDetails = () => {
   const { rideId } = useParams<{ rideId: string }>();
@@ -167,6 +168,11 @@ const RideDetails = () => {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Live Location Tracking - Show for drivers and passengers with bookings */}
+              {(hasBooking || isDriver) && (
+                <LiveLocationTracker ride={ride} isDriver={isDriver} />
+              )}
               
               {/* Contact Information - Show after booking */}
               {(hasBooking || isDriver) && <ContactInfo ride={ride} />}

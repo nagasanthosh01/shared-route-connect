@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Ride, CreateRideData, Booking, Message } from '@/types/ride';
+import { Ride, CreateRideData, Booking, Message, LiveLocation } from '@/types/ride';
 import { useAuth } from './AuthContext';
 
 interface RideContextType {
@@ -18,6 +17,10 @@ interface RideContextType {
   sendMessage: (rideId: string, content: string) => Promise<void>;
   getMessagesForRide: (rideId: string) => Message[];
   markMessagesAsRead: (rideId: string, userId: string) => Promise<void>;
+  updateLiveLocation: (rideId: string, location: LiveLocation) => Promise<void>;
+  startRide: (rideId: string) => Promise<void>;
+  completeRide: (rideId: string) => Promise<void>;
+  toggleLocationSharing: (rideId: string, enabled: boolean) => Promise<void>;
 }
 
 const RideContext = createContext<RideContextType | undefined>(undefined);
@@ -294,6 +297,56 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateLiveLocation = async (rideId: string, location: LiveLocation): Promise<void> => {
+    if (!user) throw new Error('User must be logged in');
+    
+    setIsLoading(true);
+    try {
+      const updatedRides = rides.map(ride => {
+        if (ride.id === rideId && ride.driverId === user.id) {
+          return {
+            ...ride,
+            liveLocation: location,
+            updatedAt: new Date()
+          };
+        }
+        return ride;
+      });
+
+      setRides(updatedRides);
+      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const startRide = async (rideId: string): Promise<void> => {
+    if (!user) throw new Error('User must be logged in');
+    
+    await updateRide(rideId, { 
+      status: 'in-progress',
+      isLocationSharingEnabled: true
+    });
+  };
+
+  const completeRide = async (rideId: string): Promise<void> => {
+    if (!user) throw new Error('User must be logged in');
+    
+    await updateRide(rideId, { 
+      status: 'completed',
+      isLocationSharingEnabled: false,
+      liveLocation: undefined
+    });
+  };
+
+  const toggleLocationSharing = async (rideId: string, enabled: boolean): Promise<void> => {
+    if (!user) throw new Error('User must be logged in');
+    
+    await updateRide(rideId, { isLocationSharingEnabled: enabled });
+  };
+
   const value = {
     rides,
     myRides,
@@ -308,7 +361,11 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     cancelBooking,
     sendMessage,
     getMessagesForRide,
-    markMessagesAsRead
+    markMessagesAsRead,
+    updateLiveLocation,
+    startRide,
+    completeRide,
+    toggleLocationSharing
   };
 
   return <RideContext.Provider value={value}>{children}</RideContext.Provider>;
