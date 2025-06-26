@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Ride, CreateRideData, Booking, Message } from '@/types/ride';
 import { useAuth } from './AuthContext';
@@ -87,6 +88,7 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: rideData.description,
         status: 'active',
         bookings: [],
+        messages: [],
         createdAt: new Date(),
         updatedAt: new Date()
       };
