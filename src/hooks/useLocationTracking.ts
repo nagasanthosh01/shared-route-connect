@@ -16,6 +16,7 @@ export const useLocationTracking = (
   const [currentLocation, setCurrentLocation] = useState<LiveLocation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState<boolean>(false);
+  // Fix: Use number type to handle both browser and Node.js environments
   const watchIdRef = useRef<number | null>(null);
 
   const {
@@ -75,10 +76,10 @@ export const useLocationTracking = (
         options
       );
     } else {
-      // Fallback for browsers that don't support watchPosition
+      // Fix: Cast setInterval return value to number to resolve type conflict
       const intervalId = setInterval(() => {
         navigator.geolocation.getCurrentPosition(handleSuccess, handleError, options);
-      }, trackingInterval);
+      }, trackingInterval) as unknown as number;
       watchIdRef.current = intervalId;
     }
   };
