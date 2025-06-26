@@ -4,13 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Navigation, ArrowLeft, MapPin, Clock, Users, DollarSign, Star } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Navigation, ArrowLeft, MapPin, Clock, Users, DollarSign, Star, CreditCard } from 'lucide-react';
 import { useRides } from '@/contexts/RideContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import RideMessaging from '@/components/ride/RideMessaging';
 import ContactInfo from '@/components/ride/ContactInfo';
 import LiveLocationTracker from '@/components/ride/LiveLocationTracker';
+import PaymentForm from '@/components/payment/PaymentForm';
 
 const RideDetails = () => {
   const { rideId } = useParams<{ rideId: string }>();
@@ -20,6 +22,8 @@ const RideDetails = () => {
   const { toast } = useToast();
   const [seatsToBook, setSeatsToBook] = useState(1);
   const [isBooking, setIsBooking] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [pendingBookingData, setPendingBookingData] = useState<{seats: number, total: number} | null>(null);
 
   const ride = rideId ? getRideById(rideId) : undefined;
 
@@ -49,12 +53,22 @@ const RideDetails = () => {
 
   const handleBookRide = async () => {
     setIsBooking(true);
+    setPendingBookingData({ seats: seatsToBook, total: totalPrice });
+    setShowPayment(true);
+    setIsBooking(false);
+  };
+
+  const handlePaymentSuccess = async (paymentId: string) => {
+    if (!pendingBookingData) return;
+    
     try {
-      await bookRide(ride.id, seatsToBook);
+      await bookRide(ride.id, pendingBookingData.seats);
       toast({
         title: "Booking confirmed!",
-        description: `You have successfully booked ${seatsToBook} seat${seatsToBook !== 1 ? 's' : ''} for $${totalPrice}`,
+        description: `You have successfully booked ${pendingBookingData.seats} seat${pendingBookingData.seats !== 1 ? 's' : ''} for $${pendingBookingData.total}`,
       });
+      setShowPayment(false);
+      setPendingBookingData(null);
       navigate('/my-bookings');
     } catch (error) {
       toast({
@@ -62,9 +76,12 @@ const RideDetails = () => {
         description: error instanceof Error ? error.message : "An error occurred while booking the ride",
         variant: "destructive",
       });
-    } finally {
-      setIsBooking(false);
     }
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPayment(false);
+    setPendingBookingData(null);
   };
 
   return (
@@ -143,7 +160,6 @@ const RideDetails = () => {
                 </CardContent>
               </Card>
 
-              {/* Driver Information */}
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <CardHeader>
                   <CardTitle>Driver Information</CardTitle>
@@ -169,15 +185,12 @@ const RideDetails = () => {
                 </CardContent>
               </Card>
               
-              {/* Live Location Tracking - Show for drivers and passengers with bookings */}
               {(hasBooking || isDriver) && (
                 <LiveLocationTracker ride={ride} isDriver={isDriver} />
               )}
               
-              {/* Contact Information - Show after booking */}
               {(hasBooking || isDriver) && <ContactInfo ride={ride} />}
               
-              {/* Messaging - Show after booking */}
               {(hasBooking || isDriver) && <RideMessaging ride={ride} />}
             </div>
 
@@ -236,17 +249,20 @@ const RideDetails = () => {
                       {isBooking ? (
                         <div className="flex items-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Booking...
+                          Processing...
                         </div>
                       ) : availableSeats === 0 ? (
                         'Ride Full'
                       ) : (
-                        `Book ${seatsToBook} Seat${seatsToBook !== 1 ? 's' : ''} for $${totalPrice}`
+                        <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Book & Pay ${totalPrice}
+                        </div>
                       )}
                     </Button>
 
                     <div className="text-xs text-gray-600 text-center">
-                      You'll be able to contact the driver after booking
+                      Secure payment • You'll be able to contact the driver after booking
                     </div>
                   </CardContent>
                 </Card>
@@ -288,6 +304,26 @@ const RideDetails = () => {
           </div>
         </div>
       </main>
+
+      {/* Payment Dialog */}
+      <Dialog open={showPayment} onOpenChange={setShowPayment}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Complete Your Booking</DialogTitle>
+            <DialogDescription>
+              Complete payment to confirm your ride booking
+            </DialogDescription>
+          </DialogHeader>
+          {pendingBookingData && (
+            <PaymentForm
+              amount={pendingBookingData.total}
+              bookingId={ride.id}
+              onPaymentSuccess={handlePaymentSuccess}
+              onCancel={handlePaymentCancel}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
