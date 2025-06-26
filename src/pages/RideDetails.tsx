@@ -1,18 +1,21 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Navigation, ArrowLeft, MapPin, Clock, Users, DollarSign, Star, Phone } from 'lucide-react';
+import { Navigation, ArrowLeft, MapPin, Clock, Users, DollarSign, Star } from 'lucide-react';
 import { useRides } from '@/contexts/RideContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import RideMessaging from '@/components/ride/RideMessaging';
+import ContactInfo from '@/components/ride/ContactInfo';
 
 const RideDetails = () => {
   const { rideId } = useParams<{ rideId: string }>();
   const navigate = useNavigate();
   const { getRideById, bookRide, isLoading } = useRides();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [seatsToBook, setSeatsToBook] = useState(1);
   const [isBooking, setIsBooking] = useState(false);
@@ -39,6 +42,9 @@ const RideDetails = () => {
 
   const availableSeats = ride.availableSeats - (ride.bookings?.length || 0);
   const totalPrice = ride.pricePerSeat * seatsToBook;
+  const userBooking = ride.bookings?.find(booking => booking.passengerId === user?.id);
+  const hasBooking = !!userBooking;
+  const isDriver = ride.driverId === user?.id;
 
   const handleBookRide = async () => {
     setIsBooking(true);
@@ -85,7 +91,7 @@ const RideDetails = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Ride Details */}
             <div className="lg:col-span-2 space-y-6">
@@ -161,76 +167,117 @@ const RideDetails = () => {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Contact Information - Show after booking */}
+              {(hasBooking || isDriver) && <ContactInfo ride={ride} />}
+              
+              {/* Messaging - Show after booking */}
+              {(hasBooking || isDriver) && <RideMessaging ride={ride} />}
             </div>
 
             {/* Booking Panel */}
             <div className="lg:col-span-1">
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl sticky top-8">
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Book This Ride</span>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">
-                        ${ride.pricePerSeat}
+              {!hasBooking && !isDriver ? (
+                <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl sticky top-8">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Book This Ride</span>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-green-600">
+                          ${ride.pricePerSeat}
+                        </div>
+                        <div className="text-sm text-gray-600">per seat</div>
                       </div>
-                      <div className="text-sm text-gray-600">per seat</div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="seats">Number of Seats</Label>
+                      <Input
+                        id="seats"
+                        type="number"
+                        min="1"
+                        max={availableSeats}
+                        value={seatsToBook}
+                        onChange={(e) => setSeatsToBook(parseInt(e.target.value) || 1)}
+                        className="text-lg text-center"
+                      />
+                      <p className="text-sm text-gray-600">
+                        Maximum {availableSeats} seat{availableSeats !== 1 ? 's' : ''} available
+                      </p>
                     </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="seats">Number of Seats</Label>
-                    <Input
-                      id="seats"
-                      type="number"
-                      min="1"
-                      max={availableSeats}
-                      value={seatsToBook}
-                      onChange={(e) => setSeatsToBook(parseInt(e.target.value) || 1)}
-                      className="text-lg text-center"
-                    />
-                    <p className="text-sm text-gray-600">
-                      Maximum {availableSeats} seat{availableSeats !== 1 ? 's' : ''} available
-                    </p>
-                  </div>
 
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span>Price per seat:</span>
-                      <span>${ride.pricePerSeat}</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span>Number of seats:</span>
-                      <span>{seatsToBook}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
-                      <span>Total:</span>
-                      <span className="text-green-600">${totalPrice}</span>
-                    </div>
-                  </div>
-
-                  <Button 
-                    onClick={handleBookRide}
-                    disabled={isBooking || isLoading || availableSeats === 0}
-                    className="w-full bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-                  >
-                    {isBooking ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Booking...
+                    <div className="border-t pt-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span>Price per seat:</span>
+                        <span>${ride.pricePerSeat}</span>
                       </div>
-                    ) : availableSeats === 0 ? (
-                      'Ride Full'
-                    ) : (
-                      `Book ${seatsToBook} Seat${seatsToBook !== 1 ? 's' : ''} for $${totalPrice}`
+                      <div className="flex justify-between items-center mb-2">
+                        <span>Number of seats:</span>
+                        <span>{seatsToBook}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
+                        <span>Total:</span>
+                        <span className="text-green-600">${totalPrice}</span>
+                      </div>
+                    </div>
+
+                    <Button 
+                      onClick={handleBookRide}
+                      disabled={isBooking || isLoading || availableSeats === 0}
+                      className="w-full bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
+                    >
+                      {isBooking ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Booking...
+                        </div>
+                      ) : availableSeats === 0 ? (
+                        'Ride Full'
+                      ) : (
+                        `Book ${seatsToBook} Seat${seatsToBook !== 1 ? 's' : ''} for $${totalPrice}`
+                      )}
+                    </Button>
+
+                    <div className="text-xs text-gray-600 text-center">
+                      You'll be able to contact the driver after booking
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl sticky top-8">
+                  <CardHeader>
+                    <CardTitle className="text-center">
+                      {hasBooking ? 'Booking Confirmed' : 'Your Ride'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center space-y-4">
+                    {hasBooking && (
+                      <div className="p-4 bg-green-50 rounded-lg">
+                        <div className="text-green-800 font-semibold">
+                          ✓ You have booked {userBooking.seatsBooked} seat{userBooking.seatsBooked !== 1 ? 's' : ''}
+                        </div>
+                        <div className="text-green-600">
+                          Total paid: ${userBooking.totalPrice}
+                        </div>
+                      </div>
                     )}
-                  </Button>
-
-                  <div className="text-xs text-gray-600 text-center">
-                    You'll be able to contact the driver after booking
-                  </div>
-                </CardContent>
-              </Card>
+                    {isDriver && (
+                      <div className="p-4 bg-blue-50 rounded-lg">
+                        <div className="text-blue-800 font-semibold">
+                          This is your ride
+                        </div>
+                        <div className="text-blue-600">
+                          {ride.bookings?.length || 0} passenger{(ride.bookings?.length || 0) !== 1 ? 's' : ''} booked
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-600">
+                      Use the messaging system below to communicate with {hasBooking ? 'the driver' : 'passengers'}.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         </div>

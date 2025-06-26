@@ -59,7 +59,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/ride/:rideId" element={
-                <ProtectedRoute requiredRole="passenger">
+                <ProtectedRoute>
                   <RideDetails />
                 </ProtectedRoute>
               } />

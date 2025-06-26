@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Ride, CreateRideData, Booking } from '@/types/ride';
+import { Ride, CreateRideData, Booking, Message } from '@/types/ride';
 import { useAuth } from './AuthContext';
 
 interface RideContextType {
@@ -14,6 +14,9 @@ interface RideContextType {
   getRideById: (rideId: string) => Ride | undefined;
   bookRide: (rideId: string, seatsToBook: number) => Promise<void>;
   cancelBooking: (bookingId: string) => Promise<void>;
+  sendMessage: (rideId: string, content: string) => Promise<void>;
+  getMessagesForRide: (rideId: string) => Message[];
+  markMessagesAsRead: (rideId: string, userId: string) => Promise<void>;
 }
 
 const RideContext = createContext<RideContextType | undefined>(undefined);
@@ -211,6 +214,84 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const sendMessage = async (rideId: string, content: string): Promise<void> => {
+    if (!user) throw new Error('User must be logged in to send messages');
+    
+    setIsLoading(true);
+    try {
+      const ride = rides.find(r => r.id === rideId);
+      if (!ride) throw new Error('Ride not found');
+
+      // Check if user is involved in this ride (driver or passenger)
+      const isDriver = ride.driverId === user.id;
+      const isPassenger = ride.bookings?.some(booking => booking.passengerId === user.id);
+      
+      if (!isDriver && !isPassenger) {
+        throw new Error('You are not authorized to send messages for this ride');
+      }
+
+      const newMessage: Message = {
+        id: Date.now().toString(),
+        rideId: rideId,
+        senderId: user.id,
+        senderName: `${user.firstName} ${user.lastName}`,
+        senderRole: user.role,
+        content: content.trim(),
+        timestamp: new Date(),
+        read: false
+      };
+
+      const updatedRides = rides.map(r => {
+        if (r.id === rideId) {
+          return {
+            ...r,
+            messages: [...(r.messages || []), newMessage],
+            updatedAt: new Date()
+          };
+        }
+        return r;
+      });
+
+      setRides(updatedRides);
+      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getMessagesForRide = (rideId: string): Message[] => {
+    const ride = rides.find(r => r.id === rideId);
+    return ride?.messages || [];
+  };
+
+  const markMessagesAsRead = async (rideId: string, userId: string): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const updatedRides = rides.map(ride => {
+        if (ride.id === rideId) {
+          const updatedMessages = ride.messages?.map(message => 
+            message.senderId !== userId ? { ...message, read: true } : message
+          ) || [];
+          return {
+            ...ride,
+            messages: updatedMessages,
+            updatedAt: new Date()
+          };
+        }
+        return ride;
+      });
+
+      setRides(updatedRides);
+      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     rides,
     myRides,
@@ -222,7 +303,10 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     searchRides,
     getRideById,
     bookRide,
-    cancelBooking
+    cancelBooking,
+    sendMessage,
+    getMessagesForRide,
+    markMessagesAsRead
   };
 
   return <RideContext.Provider value={value}>{children}</RideContext.Provider>;

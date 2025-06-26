@@ -7,6 +7,17 @@ export interface Location {
   country: string;
 }
 
+export interface Message {
+  id: string;
+  rideId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'driver' | 'passenger';
+  content: string;
+  timestamp: Date;
+  read: boolean;
+}
+
 export interface Booking {
   id: string;
   rideId: string;
@@ -32,6 +43,7 @@ export interface Ride {
     lastName: string;
     rating: number;
     profileImage?: string;
+    phone?: string;
   };
   from: Location;
   to: Location;
@@ -43,6 +55,7 @@ export interface Ride {
   description?: string;
   status: 'active' | 'full' | 'completed' | 'cancelled';
   bookings: Booking[];
+  messages: Message[];
   createdAt: Date;
   updatedAt: Date;
 }
