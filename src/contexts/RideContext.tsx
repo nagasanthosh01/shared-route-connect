@@ -1,6 +1,32 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Ride, CreateRideData, Booking, Message, LiveLocation } from '@/types/ride';
 import { useAuth } from './AuthContext';
+import { 
+  createNewRide, 
+  searchRides as searchRidesService, 
+  getRideById as getRideByIdService 
+} from '@/services/rideService';
+import { 
+  createBooking, 
+  processBooking, 
+  processCancelBooking 
+} from '@/services/bookingService';
+import { 
+  createMessage, 
+  canSendMessage, 
+  addMessageToRide, 
+  markMessagesAsRead as markMessagesAsReadService,
+  getMessagesForRide as getMessagesForRideService
+} from '@/services/messageService';
+import { 
+  updateRideLocation, 
+  updateRideStatus 
+} from '@/services/locationService';
+import { 
+  saveRidesToStorage, 
+  loadRidesFromStorage 
+} from '@/services/storageService';
 
 interface RideContextType {
   rides: Ride[];
@@ -40,25 +66,8 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load rides from localStorage on mount
   useEffect(() => {
-    const savedRides = localStorage.getItem('shareride_rides');
-    if (savedRides) {
-      try {
-        const ridesData = JSON.parse(savedRides);
-        const parsedRides = ridesData.map((ride: any) => ({
-          ...ride,
-          departureDate: new Date(ride.departureDate),
-          createdAt: new Date(ride.createdAt),
-          updatedAt: new Date(ride.updatedAt),
-          bookings: ride.bookings?.map((booking: any) => ({
-            ...booking,
-            createdAt: new Date(booking.createdAt)
-          })) || []
-        }));
-        setRides(parsedRides);
-      } catch (error) {
-        console.error('Error parsing saved rides:', error);
-      }
-    }
+    const loadedRides = loadRidesFromStorage();
+    setRides(loadedRides);
   }, []);
 
   const myRides = rides.filter(ride => ride.driverId === user?.id);
@@ -71,34 +80,10 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setIsLoading(true);
     try {
-      const newRide: Ride = {
-        id: Date.now().toString(),
-        driverId: user.id,
-        driver: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          rating: 5.0,
-          profileImage: user.profileImage
-        },
-        from: rideData.from,
-        to: rideData.to,
-        departureDate: rideData.departureDate,
-        departureTime: rideData.departureTime,
-        availableSeats: rideData.availableSeats,
-        pricePerSeat: rideData.pricePerSeat,
-        totalPrice: rideData.pricePerSeat * rideData.availableSeats,
-        description: rideData.description,
-        status: 'active',
-        bookings: [],
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
+      const newRide = createNewRide(rideData, user.id, user);
       const updatedRides = [...rides, newRide];
       setRides(updatedRides);
-      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+      saveRidesToStorage(updatedRides);
     } catch (error) {
       throw error;
     } finally {
@@ -115,7 +100,7 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : ride
       );
       setRides(updatedRides);
-      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+      saveRidesToStorage(updatedRides);
     } catch (error) {
       throw error;
     } finally {
@@ -128,20 +113,11 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const searchRides = (from: string, to: string, date?: Date): Ride[] => {
-    return rides.filter(ride => {
-      const matchesRoute = ride.from.city.toLowerCase().includes(from.toLowerCase()) &&
-                          ride.to.city.toLowerCase().includes(to.toLowerCase());
-      const matchesDate = !date || 
-        ride.departureDate.toDateString() === date.toDateString();
-      const isActive = ride.status === 'active';
-      const hasSeats = ride.availableSeats > (ride.bookings?.length || 0);
-      
-      return matchesRoute && matchesDate && isActive && hasSeats;
-    });
+    return searchRidesService(rides, from, to, date);
   };
 
   const getRideById = (rideId: string): Ride | undefined => {
-    return rides.find(ride => ride.id === rideId);
+    return getRideByIdService(rides, rideId);
   };
 
   const bookRide = async (rideId: string, seatsToBook: number): Promise<void> => {
@@ -157,37 +133,11 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Not enough seats available');
       }
 
-      const newBooking: Booking = {
-        id: Date.now().toString(),
-        rideId: rideId,
-        passengerId: user.id,
-        passenger: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          phone: user.phone
-        },
-        seatsBooked: seatsToBook,
-        totalPrice: ride.pricePerSeat * seatsToBook,
-        status: 'confirmed',
-        createdAt: new Date()
-      };
-
-      const updatedRides = rides.map(r => {
-        if (r.id === rideId) {
-          const updatedBookings = [...(r.bookings || []), newBooking];
-          return {
-            ...r,
-            bookings: updatedBookings,
-            status: updatedBookings.length >= r.availableSeats ? 'full' as const : r.status,
-            updatedAt: new Date()
-          };
-        }
-        return r;
-      });
-
+      const newBooking = createBooking(rideId, seatsToBook, user, ride);
+      const updatedRides = processBooking(rides, rideId, newBooking);
+      
       setRides(updatedRides);
-      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+      saveRidesToStorage(updatedRides);
     } catch (error) {
       throw error;
     } finally {
@@ -200,18 +150,9 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setIsLoading(true);
     try {
-      const updatedRides = rides.map(ride => {
-        const updatedBookings = ride.bookings?.filter(booking => booking.id !== bookingId) || [];
-        return {
-          ...ride,
-          bookings: updatedBookings,
-          status: updatedBookings.length < ride.availableSeats ? 'active' as const : ride.status,
-          updatedAt: new Date()
-        };
-      });
-
+      const updatedRides = processCancelBooking(rides, bookingId);
       setRides(updatedRides);
-      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+      saveRidesToStorage(updatedRides);
     } catch (error) {
       throw error;
     } finally {
@@ -227,38 +168,15 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const ride = rides.find(r => r.id === rideId);
       if (!ride) throw new Error('Ride not found');
 
-      // Check if user is involved in this ride (driver or passenger)
-      const isDriver = ride.driverId === user.id;
-      const isPassenger = ride.bookings?.some(booking => booking.passengerId === user.id);
-      
-      if (!isDriver && !isPassenger) {
+      if (!canSendMessage(ride, user.id)) {
         throw new Error('You are not authorized to send messages for this ride');
       }
 
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        rideId: rideId,
-        senderId: user.id,
-        senderName: `${user.firstName} ${user.lastName}`,
-        senderRole: user.role,
-        content: content.trim(),
-        timestamp: new Date(),
-        read: false
-      };
-
-      const updatedRides = rides.map(r => {
-        if (r.id === rideId) {
-          return {
-            ...r,
-            messages: [...(r.messages || []), newMessage],
-            updatedAt: new Date()
-          };
-        }
-        return r;
-      });
-
+      const newMessage = createMessage(rideId, content, user);
+      const updatedRides = addMessageToRide(rides, rideId, newMessage);
+      
       setRides(updatedRides);
-      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+      saveRidesToStorage(updatedRides);
     } catch (error) {
       throw error;
     } finally {
@@ -267,29 +185,15 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getMessagesForRide = (rideId: string): Message[] => {
-    const ride = rides.find(r => r.id === rideId);
-    return ride?.messages || [];
+    return getMessagesForRideService(rides, rideId);
   };
 
   const markMessagesAsRead = async (rideId: string, userId: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const updatedRides = rides.map(ride => {
-        if (ride.id === rideId) {
-          const updatedMessages = ride.messages?.map(message => 
-            message.senderId !== userId ? { ...message, read: true } : message
-          ) || [];
-          return {
-            ...ride,
-            messages: updatedMessages,
-            updatedAt: new Date()
-          };
-        }
-        return ride;
-      });
-
+      const updatedRides = markMessagesAsReadService(rides, rideId, userId);
       setRides(updatedRides);
-      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+      saveRidesToStorage(updatedRides);
     } catch (error) {
       throw error;
     } finally {
@@ -302,19 +206,9 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setIsLoading(true);
     try {
-      const updatedRides = rides.map(ride => {
-        if (ride.id === rideId && ride.driverId === user.id) {
-          return {
-            ...ride,
-            liveLocation: location,
-            updatedAt: new Date()
-          };
-        }
-        return ride;
-      });
-
+      const updatedRides = updateRideLocation(rides, rideId, location, user.id);
       setRides(updatedRides);
-      localStorage.setItem('shareride_rides', JSON.stringify(updatedRides));
+      saveRidesToStorage(updatedRides);
     } catch (error) {
       throw error;
     } finally {
@@ -325,20 +219,22 @@ export const RideProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const startRide = async (rideId: string): Promise<void> => {
     if (!user) throw new Error('User must be logged in');
     
-    await updateRide(rideId, { 
-      status: 'in-progress',
-      isLocationSharingEnabled: true
+    const updatedRides = updateRideStatus(rides, rideId, 'in-progress', { 
+      isLocationSharingEnabled: true 
     });
+    setRides(updatedRides);
+    saveRidesToStorage(updatedRides);
   };
 
   const completeRide = async (rideId: string): Promise<void> => {
     if (!user) throw new Error('User must be logged in');
     
-    await updateRide(rideId, { 
-      status: 'completed',
+    const updatedRides = updateRideStatus(rides, rideId, 'completed', { 
       isLocationSharingEnabled: false,
       liveLocation: undefined
     });
+    setRides(updatedRides);
+    saveRidesToStorage(updatedRides);
   };
 
   const toggleLocationSharing = async (rideId: string, enabled: boolean): Promise<void> => {
