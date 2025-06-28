@@ -1,12 +1,14 @@
 
 import React, { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Navigation, Play, Square } from 'lucide-react';
+import { Navigation } from 'lucide-react';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
 import { useRides } from '@/contexts/RideContext';
 import { useToast } from '@/hooks/use-toast';
 import { Ride } from '@/types/ride';
+import LocationStatus from './LocationStatus';
+import RideControls from './RideControls';
+import LocationDisplay from './LocationDisplay';
 
 interface LiveLocationTrackerProps {
   ride: Ride;
@@ -79,29 +81,16 @@ const LiveLocationTracker: React.FC<LiveLocationTrackerProps> = ({ ride, isDrive
     }
   };
 
-  if (!isSupported && isDriver) {
+  // Early returns for driver error states
+  if ((!isSupported || error) && isDriver) {
     return (
-      <Card className="bg-yellow-50 border-yellow-200">
-        <CardContent className="pt-6">
-          <div className="flex items-center space-x-2 text-yellow-800">
-            <MapPin className="h-5 w-5" />
-            <span>Location tracking is not supported on this device</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error && isDriver) {
-    return (
-      <Card className="bg-red-50 border-red-200">
-        <CardContent className="pt-6">
-          <div className="flex items-center space-x-2 text-red-800">
-            <MapPin className="h-5 w-5" />
-            <span>Location Error: {error}</span>
-          </div>
-        </CardContent>
-      </Card>
+      <LocationStatus
+        isTracking={isTracking}
+        currentLocation={currentLocation}
+        error={error}
+        isSupported={isSupported}
+        isDriver={isDriver}
+      />
     );
   }
 
@@ -114,93 +103,34 @@ const LiveLocationTracker: React.FC<LiveLocationTrackerProps> = ({ ride, isDrive
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <LocationStatus
+          isTracking={isTracking}
+          currentLocation={currentLocation}
+          error={error}
+          isSupported={isSupported}
+          isDriver={isDriver}
+        />
+
         {isDriver ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${isTracking ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-                <span className="text-sm font-medium">
-                  {isTracking ? 'Location sharing active' : 'Location sharing inactive'}
-                </span>
-              </div>
-              {currentLocation && (
-                <div className="text-xs text-gray-600">
-                  Accuracy: ~{Math.round(currentLocation.accuracy || 0)}m
-                </div>
-              )}
-            </div>
-
-            {ride.status === 'active' && (
-              <Button 
-                onClick={handleStartRide}
-                className="w-full bg-green-600 hover:bg-green-700"
-              >
-                <Play className="mr-2 h-4 w-4" />
-                Start Ride & Enable Tracking
-              </Button>
-            )}
-
-            {ride.status === 'in-progress' && (
-              <div className="space-y-2">
-                <Button 
-                  onClick={handleToggleLocationSharing}
-                  variant={ride.isLocationSharingEnabled ? "destructive" : "default"}
-                  className="w-full"
-                >
-                  <MapPin className="mr-2 h-4 w-4" />
-                  {ride.isLocationSharingEnabled ? 'Disable' : 'Enable'} Location Sharing
-                </Button>
-                <Button 
-                  onClick={handleCompleteRide}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  <Square className="mr-2 h-4 w-4" />
-                  Complete Ride
-                </Button>
-              </div>
-            )}
-
-            {currentLocation && (
-              <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                <div>Lat: {currentLocation.latitude.toFixed(6)}</div>
-                <div>Lng: {currentLocation.longitude.toFixed(6)}</div>
-                <div>Updated: {currentLocation.timestamp.toLocaleTimeString()}</div>
-              </div>
-            )}
+            <RideControls
+              ride={ride}
+              onStartRide={handleStartRide}
+              onCompleteRide={handleCompleteRide}
+              onToggleLocationSharing={handleToggleLocationSharing}
+            />
+            <LocationDisplay
+              ride={ride}
+              currentLocation={currentLocation}
+              isDriver={isDriver}
+            />
           </div>
         ) : (
-          <div className="space-y-4">
-            {ride.liveLocation ? (
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2 text-green-600">
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                  <span className="font-medium">Driver location is being shared</span>
-                </div>
-                <div className="bg-green-50 p-3 rounded-lg space-y-1">
-                  <div className="text-sm text-green-800">
-                    Last updated: {ride.liveLocation.timestamp.toLocaleTimeString()}
-                  </div>
-                  <div className="text-xs text-green-600">
-                    Location accuracy: ~{Math.round(ride.liveLocation.accuracy || 0)}m
-                  </div>
-                </div>
-                <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                  <div>Driver Lat: {ride.liveLocation.latitude.toFixed(6)}</div>
-                  <div>Driver Lng: {ride.liveLocation.longitude.toFixed(6)}</div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-2 text-gray-600">
-                <MapPin className="h-4 w-4" />
-                <span>
-                  {ride.status === 'in-progress' 
-                    ? 'Driver location sharing is disabled' 
-                    : 'Location sharing will be available when the ride starts'
-                  }
-                </span>
-              </div>
-            )}
-          </div>
+          <LocationDisplay
+            ride={ride}
+            currentLocation={currentLocation}
+            isDriver={isDriver}
+          />
         )}
       </CardContent>
     </Card>
