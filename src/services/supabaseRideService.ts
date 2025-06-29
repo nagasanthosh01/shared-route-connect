@@ -27,50 +27,27 @@ export const createRide = async (rideData: CreateRideData): Promise<Ride> => {
       total_price: rideData.pricePerSeat * rideData.availableSeats,
       description: rideData.description
     })
-    .select(`
-      *,
-      profiles!rides_driver_id_fkey (
-        id,
-        first_name,
-        last_name,
-        phone,
-        profile_image
-      )
-    `)
+    .select('*')
     .single();
 
   if (error) throw error;
 
-  return mapSupabaseRideToRide(data);
+  // Fetch driver profile separately
+  const { data: driverProfile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) throw profileError;
+
+  return mapSupabaseRideToRide(data, driverProfile);
 };
 
 export const searchRides = async (filters: SearchFilters): Promise<Ride[]> => {
   let query = supabase
     .from('rides')
-    .select(`
-      *,
-      profiles!rides_driver_id_fkey (
-        id,
-        first_name,
-        last_name,
-        phone,
-        profile_image
-      ),
-      bookings (
-        id,
-        passenger_id,
-        seats_booked,
-        total_price,
-        status,
-        created_at,
-        profiles!bookings_passenger_id_fkey (
-          id,
-          first_name,
-          last_name,
-          phone
-        )
-      )
-    `)
+    .select('*')
     .eq('status', 'active')
     .gte('departure_date', new Date().toISOString().split('T')[0]);
 
@@ -98,109 +75,120 @@ export const searchRides = async (filters: SearchFilters): Promise<Ride[]> => {
     query = query.gte('available_seats', filters.availableSeats);
   }
 
-  const { data, error } = await query;
+  const { data: rides, error } = await query;
 
   if (error) throw error;
 
-  return data.map(mapSupabaseRideToRide);
+  // Fetch all driver profiles
+  const driverIds = rides.map(ride => ride.driver_id);
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('*')
+    .in('id', driverIds);
+
+  if (profilesError) throw profilesError;
+
+  // Fetch all bookings for these rides
+  const rideIds = rides.map(ride => ride.id);
+  const { data: bookings, error: bookingsError } = await supabase
+    .from('bookings')
+    .select('*')
+    .in('ride_id', rideIds);
+
+  if (bookingsError) throw bookingsError;
+
+  return rides.map(ride => {
+    const driverProfile = profiles.find(p => p.id === ride.driver_id);
+    const rideBookings = bookings.filter(b => b.ride_id === ride.id);
+    return mapSupabaseRideToRide(ride, driverProfile, rideBookings);
+  });
 };
 
 export const getDriverRides = async (): Promise<Ride[]> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
 
-  const { data, error } = await supabase
+  const { data: rides, error } = await supabase
     .from('rides')
-    .select(`
-      *,
-      profiles!rides_driver_id_fkey (
-        id,
-        first_name,
-        last_name,
-        phone,
-        profile_image
-      ),
-      bookings (
-        id,
-        passenger_id,
-        seats_booked,
-        total_price,
-        status,
-        created_at,
-        profiles!bookings_passenger_id_fkey (
-          id,
-          first_name,
-          last_name,
-          phone
-        )
-      )
-    `)
+    .select('*')
     .eq('driver_id', user.id)
     .order('departure_date', { ascending: true });
 
   if (error) throw error;
 
-  return data.map(mapSupabaseRideToRide);
+  // Fetch driver profile
+  const { data: driverProfile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) throw profileError;
+
+  // Fetch all bookings for these rides
+  const rideIds = rides.map(ride => ride.id);
+  const { data: bookings, error: bookingsError } = await supabase
+    .from('bookings')
+    .select('*')
+    .in('ride_id', rideIds);
+
+  if (bookingsError) throw bookingsError;
+
+  return rides.map(ride => {
+    const rideBookings = bookings.filter(b => b.ride_id === ride.id);
+    return mapSupabaseRideToRide(ride, driverProfile, rideBookings);
+  });
 };
 
 export const getRideById = async (rideId: string): Promise<Ride> => {
-  const { data, error } = await supabase
+  const { data: ride, error } = await supabase
     .from('rides')
-    .select(`
-      *,
-      profiles!rides_driver_id_fkey (
-        id,
-        first_name,
-        last_name,
-        phone,
-        profile_image
-      ),
-      bookings (
-        id,
-        passenger_id,
-        seats_booked,
-        total_price,
-        status,
-        created_at,
-        profiles!bookings_passenger_id_fkey (
-          id,
-          first_name,
-          last_name,
-          phone
-        )
-      ),
-      messages (
-        id,
-        sender_id,
-        content,
-        sender_role,
-        is_read,
-        created_at,
-        profiles!messages_sender_id_fkey (
-          first_name,
-          last_name
-        )
-      )
-    `)
+    .select('*')
     .eq('id', rideId)
     .single();
 
   if (error) throw error;
 
-  return mapSupabaseRideToRide(data);
+  // Fetch driver profile
+  const { data: driverProfile, error: profileError } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', ride.driver_id)
+    .single();
+
+  if (profileError) throw profileError;
+
+  // Fetch bookings for this ride
+  const { data: bookings, error: bookingsError } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('ride_id', rideId);
+
+  if (bookingsError) throw bookingsError;
+
+  // Fetch messages for this ride
+  const { data: messages, error: messagesError } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('ride_id', rideId)
+    .order('created_at', { ascending: true });
+
+  if (messagesError) throw messagesError;
+
+  return mapSupabaseRideToRide(ride, driverProfile, bookings, messages);
 };
 
-const mapSupabaseRideToRide = (data: any): Ride => {
+const mapSupabaseRideToRide = (data: any, driverProfile: any, bookings: any[] = [], messages: any[] = []): Ride => {
   return {
     id: data.id,
     driverId: data.driver_id,
     driver: {
-      id: data.profiles.id,
-      firstName: data.profiles.first_name,
-      lastName: data.profiles.last_name,
+      id: driverProfile.id,
+      firstName: driverProfile.first_name,
+      lastName: driverProfile.last_name,
       rating: 5.0, // Default rating
-      profileImage: data.profiles.profile_image,
-      phone: data.profiles.phone
+      profileImage: driverProfile.profile_image,
+      phone: driverProfile.phone
     },
     from: {
       address: data.from_address,
@@ -223,31 +211,31 @@ const mapSupabaseRideToRide = (data: any): Ride => {
     totalPrice: data.total_price,
     description: data.description,
     status: data.status,
-    bookings: data.bookings?.map((booking: any) => ({
+    bookings: bookings.map((booking: any) => ({
       id: booking.id,
       rideId: data.id,
       passengerId: booking.passenger_id,
       passenger: {
-        id: booking.profiles.id,
-        firstName: booking.profiles.first_name,
-        lastName: booking.profiles.last_name,
-        phone: booking.profiles.phone
+        id: booking.passenger_id,
+        firstName: 'Unknown', // Will need to fetch separately if needed
+        lastName: 'User',
+        phone: ''
       },
       seatsBooked: booking.seats_booked,
       totalPrice: booking.total_price,
       status: booking.status,
       createdAt: new Date(booking.created_at)
-    })) || [],
-    messages: data.messages?.map((message: any) => ({
+    })),
+    messages: messages.map((message: any) => ({
       id: message.id,
       rideId: data.id,
       senderId: message.sender_id,
-      senderName: `${message.profiles.first_name} ${message.profiles.last_name}`,
+      senderName: 'Unknown User', // Will need to fetch separately if needed
       senderRole: message.sender_role,
       content: message.content,
       timestamp: new Date(message.created_at),
       read: message.is_read
-    })) || [],
+    })),
     liveLocation: data.live_location_latitude && data.live_location_longitude ? {
       latitude: data.live_location_latitude,
       longitude: data.live_location_longitude,
