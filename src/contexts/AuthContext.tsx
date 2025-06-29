@@ -1,5 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 export type UserRole = 'driver' | 'passenger';
 
@@ -44,45 +46,63 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on app load
-    const savedUser = localStorage.getItem('shareride_user');
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        setUser({
-          ...userData,
-          createdAt: new Date(userData.createdAt)
-        });
-      } catch (error) {
-        console.error('Error parsing saved user data:', error);
-        localStorage.removeItem('shareride_user');
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        setSession(session);
+        
+        if (session?.user) {
+          // Fetch user profile from profiles table
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile) {
+            setUser({
+              id: session.user.id,
+              email: session.user.email!,
+              firstName: profile.first_name,
+              lastName: profile.last_name,
+              role: profile.role as UserRole,
+              phone: profile.phone,
+              profileImage: profile.profile_image,
+              createdAt: new Date(profile.created_at)
+            });
+          }
+        } else {
+          setUser(null);
+        }
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    );
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (!session) {
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      // Simulate API call - In real app, this would be an actual API request
-      const savedUsers = JSON.parse(localStorage.getItem('shareride_users') || '[]');
-      const foundUser = savedUsers.find((u: any) => u.email === email && u.password === password);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      if (!foundUser) {
-        throw new Error('Invalid email or password');
-      }
-
-      const { password: _, ...userWithoutPassword } = foundUser;
-      const userData = {
-        ...userWithoutPassword,
-        createdAt: new Date(userWithoutPassword.createdAt)
-      };
-      
-      setUser(userData);
-      localStorage.setItem('shareride_user', JSON.stringify(userData));
+      if (error) throw error;
     } catch (error) {
       throw error;
     } finally {
@@ -93,31 +113,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (userData: RegisterData): Promise<void> => {
     setIsLoading(true);
     try {
-      // Simulate API call - In real app, this would be an actual API request
-      const savedUsers = JSON.parse(localStorage.getItem('shareride_users') || '[]');
+      const redirectUrl = `${window.location.origin}/`;
       
-      // Check if user already exists
-      if (savedUsers.find((u: any) => u.email === userData.email)) {
-        throw new Error('User with this email already exists');
-      }
-
-      const newUser = {
-        id: Date.now().toString(),
+      const { error } = await supabase.auth.signUp({
         email: userData.email,
-        password: userData.password, // In real app, this would be hashed
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        role: userData.role,
-        phone: userData.phone,
-        createdAt: new Date()
-      };
-
-      savedUsers.push(newUser);
-      localStorage.setItem('shareride_users', JSON.stringify(savedUsers));
-
-      const { password: _, ...userWithoutPassword } = newUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('shareride_user', JSON.stringify(userWithoutPassword));
+        password: userData.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            role: userData.role,
+            phone: userData.phone
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      // The profile will be created automatically by the trigger
+      // But we need to update it with the correct data
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        await supabase
+          .from('profiles')
+          .update({
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            role: userData.role,
+            phone: userData.phone
+          })
+          .eq('id', authData.user.id);
+      }
     } catch (error) {
       throw error;
     } finally {
@@ -125,9 +152,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('shareride_user');
+    setSession(null);
   };
 
   const updateProfile = async (updateData: Partial<User>): Promise<void> => {
@@ -135,17 +163,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setIsLoading(true);
     try {
-      const updatedUser = { ...user, ...updateData };
-      setUser(updatedUser);
-      localStorage.setItem('shareride_user', JSON.stringify(updatedUser));
-
-      // Update in users array as well
-      const savedUsers = JSON.parse(localStorage.getItem('shareride_users') || '[]');
-      const userIndex = savedUsers.findIndex((u: any) => u.id === user.id);
-      if (userIndex >= 0) {
-        savedUsers[userIndex] = { ...savedUsers[userIndex], ...updateData };
-        localStorage.setItem('shareride_users', JSON.stringify(savedUsers));
-      }
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: updateData.firstName,
+          last_name: updateData.lastName,
+          role: updateData.role,
+          phone: updateData.phone,
+          profile_image: updateData.profileImage
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setUser({ ...user, ...updateData });
     } catch (error) {
       throw error;
     } finally {
