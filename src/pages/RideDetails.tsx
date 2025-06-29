@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import RideDetailsHeader from '@/components/ride/RideDetailsHeader';
 import RideDetailsCard from '@/components/ride/RideDetailsCard';
 import DriverInfoCard from '@/components/ride/DriverInfoCard';
 import BookingPanel from '@/components/ride/BookingPanel';
+import { Ride } from '@/types/ride';
 
 const RideDetails = () => {
   const { rideId } = useParams<{ rideId: string }>();
@@ -24,8 +25,14 @@ const RideDetails = () => {
   const { toast } = useToast();
   const [showPayment, setShowPayment] = useState(false);
   const [pendingBookingData, setPendingBookingData] = useState<{seats: number, total: number} | null>(null);
+  const [ride, setRide] = useState<Ride | undefined>(undefined);
 
-  const ride = rideId ? getRideById(rideId) : undefined;
+  useEffect(() => {
+    if (rideId) {
+      const foundRide = getRideById(rideId);
+      setRide(foundRide);
+    }
+  }, [rideId, getRideById]);
 
   if (!ride) {
     return (
@@ -62,7 +69,7 @@ const RideDetails = () => {
       await bookRide(ride.id, pendingBookingData.seats);
       toast({
         title: "Booking confirmed!",
-        description: `You have successfully booked ${pendingBookingData.seats} seat${pendingBookingData.seats !== 1 ? 's' : ''} for $${pendingBookingData.total}`,
+        description: `You have successfully booked ${pendingBookingData.seats} seat${pendingBookingData.seats !== 1 ? 's' : ''} for ₹${pendingBookingData.total}`,
       });
       setShowPayment(false);
       setPendingBookingData(null);

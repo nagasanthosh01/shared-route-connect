@@ -24,7 +24,11 @@ const LiveLocationTracker: React.FC<LiveLocationTrackerProps> = ({ ride, isDrive
 
   useEffect(() => {
     if (currentLocation && isDriver && isTracking) {
-      updateLiveLocation(ride.id, currentLocation).catch((error) => {
+      updateLiveLocation(ride.id, {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        accuracy: currentLocation.accuracy
+      }).catch((error) => {
         console.error('Failed to update location:', error);
       });
     }
