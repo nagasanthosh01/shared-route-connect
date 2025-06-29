@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useRides } from '@/contexts/RideContext';
+import { useRide } from '@/contexts/RideContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import RideMessaging from '@/components/ride/RideMessaging';
@@ -19,7 +19,7 @@ import BookingPanel from '@/components/ride/BookingPanel';
 const RideDetails = () => {
   const { rideId } = useParams<{ rideId: string }>();
   const navigate = useNavigate();
-  const { getRideById, bookRide, isLoading } = useRides();
+  const { getRideById, bookRide, isLoading } = useRide();
   const { user } = useAuth();
   const { toast } = useToast();
   const [showPayment, setShowPayment] = useState(false);

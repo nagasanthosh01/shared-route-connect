@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navigation } from 'lucide-react';
 import { useLocationTracking } from '@/hooks/useLocationTracking';
-import { useRides } from '@/contexts/RideContext';
+import { useRide } from '@/contexts/RideContext';
 import { useToast } from '@/hooks/use-toast';
 import { Ride } from '@/types/ride';
 import LocationStatus from './LocationStatus';
@@ -16,7 +16,7 @@ interface LiveLocationTrackerProps {
 }
 
 const LiveLocationTracker: React.FC<LiveLocationTrackerProps> = ({ ride, isDriver }) => {
-  const { updateLiveLocation, startRide, completeRide, toggleLocationSharing } = useRides();
+  const { updateLiveLocation, startRide, completeRide, toggleLocationSharing } = useRide();
   const { toast } = useToast();
   
   const isTracking = ride.status === 'in-progress' && ride.isLocationSharingEnabled;

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Send, MessageSquare } from 'lucide-react';
-import { useRides } from '@/contexts/RideContext';
+import { useRide } from '@/contexts/RideContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ride, Message } from '@/types/ride';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +19,7 @@ const RideMessaging: React.FC<RideMessagingProps> = ({ ride }) => {
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const { sendMessage, getMessagesForRide, markMessagesAsRead, isLoading } = useRides();
+  const { sendMessage, getMessagesForRide, markMessagesAsRead, isLoading } = useRide();
   const { user } = useAuth();
   const { toast } = useToast();
 

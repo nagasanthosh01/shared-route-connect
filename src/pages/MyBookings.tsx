@@ -4,11 +4,11 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Navigation, ArrowLeft, MapPin, Clock, Users, DollarSign, X, Phone } from 'lucide-react';
-import { useRides } from '@/contexts/RideContext';
+import { useRide } from '@/contexts/RideContext';
 import { useToast } from '@/hooks/use-toast';
 
 const MyBookings = () => {
-  const { myBookings, cancelBooking } = useRides();
+  const { myBookings, cancelBooking } = useRide();
   const { toast } = useToast();
 
   const handleCancelBooking = async (bookingId: string) => {
