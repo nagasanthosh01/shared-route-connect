@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,9 +21,16 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, isLoading } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user && !isLoading) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isLoading, navigate]);
 
   const {
     register,
@@ -34,24 +41,32 @@ const Login = () => {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true);
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
       await login(data.email, data.password);
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
-      });
-      navigate('/dashboard');
+      // Don't show toast or manually navigate - the useEffect will handle redirect
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "An error occurred during login",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  // Show loading if auth is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
@@ -84,6 +99,7 @@ const Login = () => {
                   placeholder="Enter your email"
                   {...register('email')}
                   className={errors.email ? 'border-red-500' : ''}
+                  disabled={isSubmitting}
                 />
                 {errors.email && (
                   <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -98,6 +114,7 @@ const Login = () => {
                   placeholder="Enter your password"
                   {...register('password')}
                   className={errors.password ? 'border-red-500' : ''}
+                  disabled={isSubmitting}
                 />
                 {errors.password && (
                   <p className="text-sm text-red-500">{errors.password.message}</p>
@@ -107,9 +124,9 @@ const Login = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-                disabled={isLoading}
+                disabled={isSubmitting}
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Signing in...
