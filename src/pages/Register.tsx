@@ -50,8 +50,9 @@ const Register = () => {
     if (isLoading) return; // Prevent double submission
     
     setIsLoading(true);
+    
     try {
-      console.log('Submitting registration form...', data);
+      console.log('Form submitted with data:', data);
       
       await registerUser({
         email: data.email,
@@ -64,15 +65,18 @@ const Register = () => {
       
       toast({
         title: "Registration successful!",
-        description: "Please check your email to confirm your account, then you can log in.",
+        description: "Please check your email to confirm your account before logging in.",
       });
       
-      // Redirect to login page instead of dashboard
-      navigate('/login');
+      // Small delay to ensure user sees the success message
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      
     } catch (error: any) {
       console.error('Registration failed:', error);
       
-      let errorMessage = "An error occurred during registration";
+      let errorMessage = "Registration failed. Please try again.";
       
       if (error?.message) {
         if (error.message.includes('User already registered')) {
@@ -81,6 +85,8 @@ const Register = () => {
           errorMessage = "Please enter a valid email address.";
         } else if (error.message.includes('Password')) {
           errorMessage = "Password must be at least 6 characters long.";
+        } else if (error.message.includes('duplicate')) {
+          errorMessage = "An account with this email already exists.";
         } else {
           errorMessage = error.message;
         }
