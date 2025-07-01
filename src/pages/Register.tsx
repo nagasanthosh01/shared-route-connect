@@ -47,8 +47,12 @@ const Register = () => {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
+    if (isLoading) return; // Prevent double submission
+    
     setIsLoading(true);
     try {
+      console.log('Submitting registration form...', data);
+      
       await registerUser({
         email: data.email,
         password: data.password,
@@ -57,15 +61,34 @@ const Register = () => {
         role: data.role,
         phone: data.phone,
       });
+      
       toast({
-        title: "Account created successfully!",
-        description: "Welcome to ShareRide. You can now start your journey.",
+        title: "Registration successful!",
+        description: "Please check your email to confirm your account, then you can log in.",
       });
-      navigate('/dashboard');
-    } catch (error) {
+      
+      // Redirect to login page instead of dashboard
+      navigate('/login');
+    } catch (error: any) {
+      console.error('Registration failed:', error);
+      
+      let errorMessage = "An error occurred during registration";
+      
+      if (error?.message) {
+        if (error.message.includes('User already registered')) {
+          errorMessage = "An account with this email already exists. Please try logging in instead.";
+        } else if (error.message.includes('Invalid email')) {
+          errorMessage = "Please enter a valid email address.";
+        } else if (error.message.includes('Password')) {
+          errorMessage = "Password must be at least 6 characters long.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Registration failed",
-        description: error instanceof Error ? error.message : "An error occurred during registration",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -109,6 +132,7 @@ const Register = () => {
                     placeholder="First name"
                     {...register('firstName')}
                     className={errors.firstName ? 'border-red-500' : ''}
+                    disabled={isLoading}
                   />
                   {errors.firstName && (
                     <p className="text-sm text-red-500">{errors.firstName.message}</p>
@@ -122,6 +146,7 @@ const Register = () => {
                     placeholder="Last name"
                     {...register('lastName')}
                     className={errors.lastName ? 'border-red-500' : ''}
+                    disabled={isLoading}
                   />
                   {errors.lastName && (
                     <p className="text-sm text-red-500">{errors.lastName.message}</p>
@@ -137,6 +162,7 @@ const Register = () => {
                   placeholder="Enter your email"
                   {...register('email')}
                   className={errors.email ? 'border-red-500' : ''}
+                  disabled={isLoading}
                 />
                 {errors.email && (
                   <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -150,6 +176,7 @@ const Register = () => {
                   type="tel"
                   placeholder="Your phone number"
                   {...register('phone')}
+                  disabled={isLoading}
                 />
               </div>
 
@@ -161,6 +188,7 @@ const Register = () => {
                   placeholder="Create a password"
                   {...register('password')}
                   className={errors.password ? 'border-red-500' : ''}
+                  disabled={isLoading}
                 />
                 {errors.password && (
                   <p className="text-sm text-red-500">{errors.password.message}</p>
@@ -175,6 +203,7 @@ const Register = () => {
                   placeholder="Confirm your password"
                   {...register('confirmPassword')}
                   className={errors.confirmPassword ? 'border-red-500' : ''}
+                  disabled={isLoading}
                 />
                 {errors.confirmPassword && (
                   <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
@@ -187,11 +216,12 @@ const Register = () => {
                   <button
                     type="button"
                     onClick={() => handleRoleSelect('driver')}
+                    disabled={isLoading}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       selectedRole === 'driver'
                         ? 'border-blue-600 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Car className="h-6 w-6 mx-auto mb-2 text-blue-600" />
                     <div className="text-sm font-medium">Offer Rides</div>
@@ -200,11 +230,12 @@ const Register = () => {
                   <button
                     type="button"
                     onClick={() => handleRoleSelect('passenger')}
+                    disabled={isLoading}
                     className={`p-4 rounded-lg border-2 transition-all ${
                       selectedRole === 'passenger'
                         ? 'border-green-600 bg-green-50'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Users className="h-6 w-6 mx-auto mb-2 text-green-600" />
                     <div className="text-sm font-medium">Find Rides</div>

@@ -58,13 +58,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           // Fetch user profile from profiles table
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
           
-          if (profile) {
+          if (profile && !error) {
             setUser({
               id: session.user.id,
               email: session.user.email!,
@@ -113,9 +113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (userData: RegisterData): Promise<void> => {
     setIsLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      console.log('Starting registration process...');
       
-      const { error } = await supabase.auth.signUp({
+      const redirectUrl = `${window.location.origin}/dashboard`;
+      
+      // Sign up the user
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
         options: {
@@ -124,28 +127,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             first_name: userData.firstName,
             last_name: userData.lastName,
             role: userData.role,
-            phone: userData.phone
+            phone: userData.phone || ''
           }
         }
       });
       
-      if (error) throw error;
-      
-      // The profile will be created automatically by the trigger
-      // But we need to update it with the correct data
-      const { data: authData } = await supabase.auth.getUser();
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        throw signUpError;
+      }
+
+      console.log('Signup successful:', authData);
+
+      // If user is created, update/create profile
       if (authData.user) {
-        await supabase
+        console.log('Updating profile for user:', authData.user.id);
+        
+        const { error: profileError } = await supabase
           .from('profiles')
-          .update({
+          .upsert({
+            id: authData.user.id,
             first_name: userData.firstName,
             last_name: userData.lastName,
             role: userData.role,
-            phone: userData.phone
-          })
-          .eq('id', authData.user.id);
+            phone: userData.phone || ''
+          }, {
+            onConflict: 'id'
+          });
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // Don't throw here, as the user is already created
+          console.log('User created but profile update failed - will retry on login');
+        } else {
+          console.log('Profile created successfully');
+        }
       }
+      
     } catch (error) {
+      console.error('Registration error:', error);
       throw error;
     } finally {
       setIsLoading(false);
