@@ -8,7 +8,7 @@ global.IntersectionObserver = class IntersectionObserver {
   disconnect() {}
   observe() {}
   unobserve() {}
-};
+} as any;
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
@@ -16,7 +16,7 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {}
   observe() {}
   unobserve() {}
-};
+} as any;
 
 // Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -42,6 +42,7 @@ const mockGeolocation = {
 
 Object.defineProperty(global.navigator, 'geolocation', {
   value: mockGeolocation,
+  writable: true,
 });
 
 // Establish API mocking before all tests

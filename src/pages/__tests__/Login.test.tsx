@@ -44,7 +44,7 @@ describe('Login Page', () => {
   });
 
   it('calls login function with correct credentials', async () => {
-    const mockLogin = jest.fn();
+    const mockLogin = jest.fn().mockResolvedValue(undefined);
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,

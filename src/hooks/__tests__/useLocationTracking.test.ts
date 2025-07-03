@@ -9,14 +9,14 @@ const mockGeolocation = {
   clearWatch: jest.fn(),
 };
 
-Object.defineProperty(global.navigator, 'geolocation', {
-  value: mockGeolocation,
-  writable: true,
-});
-
 describe('useLocationTracking', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    Object.defineProperty(global.navigator, 'geolocation', {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
   });
 
   it('returns null location when not tracking', () => {
@@ -60,16 +60,16 @@ describe('useLocationTracking', () => {
   });
 
   it('detects when geolocation is not supported', () => {
-    // Temporarily remove geolocation
-    const originalGeolocation = global.navigator.geolocation;
-    delete (global.navigator as any).geolocation;
+    // Remove geolocation support
+    Object.defineProperty(global.navigator, 'geolocation', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
 
     const { result } = renderHook(() => useLocationTracking(true));
     
     expect(result.current.isSupported).toBe(false);
     expect(result.current.error).toBeTruthy();
-
-    // Restore geolocation
-    global.navigator.geolocation = originalGeolocation;
   });
 });

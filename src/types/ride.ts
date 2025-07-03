@@ -14,6 +14,18 @@ export interface LiveLocation {
   accuracy?: number;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'driver' | 'passenger';
+  phone?: string;
+  profileImage?: string;
+  rating?: number;
+  createdAt: Date;
+}
+
 export interface Message {
   id: string;
   rideId: string;
