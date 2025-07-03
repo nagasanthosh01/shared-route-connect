@@ -44,7 +44,7 @@ describe('Login Page', () => {
   });
 
   it('calls login function with correct credentials', async () => {
-    const mockLogin = jest.fn().mockResolvedValue(undefined);
+    const mockLogin = jest.fn().mockResolvedValue(void 0);
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
@@ -85,7 +85,7 @@ describe('Login Page', () => {
   });
 
   it('disables form during submission', async () => {
-    const mockLogin = jest.fn(() => new Promise(resolve => setTimeout(resolve, 1000)));
+    const mockLogin = jest.fn(() => new Promise<void>(resolve => setTimeout(resolve, 1000)));
     mockUseAuth.mockReturnValue({
       user: null,
       isLoading: false,
