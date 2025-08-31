@@ -42,15 +42,15 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
+#RUN addgroup -g 1001 -S nginx && \
+    #adduser -S -D -H -u 1001 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
 
 # Change ownership of nginx directories
-RUN chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d && \
-    touch /var/run/nginx.pid && \
-    chown -R nginx:nginx /var/run/nginx.pid
+#RUN chown -R nginx:nginx /var/cache/nginx && \
+    #chown -R nginx:nginx /var/log/nginx && \
+   # chown -R nginx:nginx /etc/nginx/conf.d && \
+   # touch /var/run/nginx.pid && \
+    #chown -R nginx:nginx /var/run/nginx.pid
 
 # Switch to non-root user
 USER nginx
